@@ -91,8 +91,6 @@ build with the stock 64-entry queue dropped about 3 million per run), had no sta
 iterations, and cut the median iteration at 128 senders from 161 ms to 1.1 to 1.6 ms. The
 fastest iterations were unchanged, so the larger queue costs nothing measurable.
 
-One limit remains: with 128 or more senders, 3 to 9% of iterations still stall even though no
-acknowledgment is dropped. That is a second, smaller cause that has not been identified yet.
 
 ### Without changing PSM2
 
