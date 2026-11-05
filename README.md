@@ -92,8 +92,8 @@ same build with the stock 64-entry queue dropped about 3 million per run. It had
 to 80 senders in 3,000 iterations and cut the median iteration at 128 senders from 161 ms to 1.1
 to 1.6 ms. The fastest iterations were unchanged, so the larger queue has no measurable cost.
 
-The fixes now uncover secondary effects: a smaller number of stalls still appears at high
-sender counts, which we are still tracking down.
+A smaller number of stalls remains at 96 or more senders, but they are shorter and less
+common, which looks like a separate issue or a secondary effect.
 
 ### Without changing PSM2
 
