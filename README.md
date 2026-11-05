@@ -15,10 +15,10 @@ acknowledgment at once, the queue is full and PSM2 drops the extra acknowledgmen
 error. The sender gets no answer and waits for PSM2's error-check timer, whose default minimum
 is 160 ms (`PSM2_ERRCHK_TIMEOUT=160:640:2`).
 
-What matters is the number of distinct senders, not the number of messages or bytes. All-to-all
-exchanges, dense halo exchanges, and incast patterns are affected once a rank has more than 64
-off-node senders. The stall appears only for eager messages (below PSM2's rendezvous threshold,
-64,000 bytes by default).
+The trigger is the number of distinct senders; adding more messages or bytes per sender does
+not cause it. All-to-all exchanges, dense halo exchanges, and incast patterns are affected once a
+rank has more than 64 off-node senders. The stall appears only for eager messages, which are
+those below PSM2's rendezvous threshold (64,000 bytes by default).
 
 ## Reproducing it
 
@@ -50,7 +50,8 @@ With 64 senders, no iteration stalls. With 65, about 1 iteration in 100 takes 16
 
 ## The solution
 
-**Fix 2 removes the cause and is the recommended one. Fix 1 needs no rebuild.**
+We recommend fix 2, which removes the cause. Fix 1 is quicker to try because it needs no
+rebuild.
 
 ### Fix 1: shorten the error-check timer
 
@@ -59,9 +60,9 @@ export PSM2_ERRCHK_TIMEOUT=1:640:2
 ```
 
 Acknowledgments are still dropped, but each one now costs about 1 ms instead of 160 ms. In
-`run.sbatch` the 65-sender runs should show no iterations over 80 ms. The cost: in our applications, ordinary
-(non-stalled) iterations became 4 to 31% slower, by different amounts for different exchange
-algorithms, so use it with care when comparing algorithms.
+`run.sbatch` the 65-sender runs should show no iterations over 80 ms. In our applications,
+ordinary (non-stalled) iterations became 4 to 31% slower with this setting, and the slowdown
+differed between exchange algorithms, so take care when using it to compare algorithms.
 
 ### Fix 2: rebuild libpsm2 with a larger queue
 
@@ -86,11 +87,13 @@ export LD_LIBRARY_PATH=/path/to/opa-psm2/build_release:$LD_LIBRARY_PATH
 
 To check it with the reproducer: `PSM2_FIXED=/path/to/opa-psm2/build_release sbatch run.sbatch`.
 
-On 4 nodes with 256-byte messages, the rebuilt library dropped no acknowledgments (the same
-build with the stock 64-entry queue dropped about 3 million per run), had no stalls at 65 to 80 senders in 3,000
-iterations, and cut the median iteration at 128 senders from 161 ms to 1.1 to 1.6 ms. The
-fastest iterations were unchanged, so the larger queue costs nothing measurable.
+On 4 nodes with 256-byte messages, the rebuilt library dropped no acknowledgments, where the
+same build with the stock 64-entry queue dropped about 3 million per run. It had no stalls at 65
+to 80 senders in 3,000 iterations and cut the median iteration at 128 senders from 161 ms to 1.1
+to 1.6 ms. The fastest iterations were unchanged, so the larger queue has no measurable cost.
 
+The fixes now uncover secondary effects: a smaller number of stalls still appears at high
+sender counts, which we are still tracking down.
 
 ### Without changing PSM2
 
